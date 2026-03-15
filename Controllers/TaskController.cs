@@ -3,9 +3,11 @@ using TaskFlow.Api.DTOs;
 using TaskFlow.Api.Models;
 using TaskFlow.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace TaskFlow.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/tasks")]
 public class TasksController : ControllerBase
