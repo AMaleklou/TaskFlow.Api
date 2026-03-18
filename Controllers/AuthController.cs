@@ -32,15 +32,16 @@ namespace TaskFlow.Api.Controllers
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
                 return Unauthorized();
 
-            var token = GenerateJwtToken(user.Username);
+            var token = GenerateJwtToken(user);
             return Ok(new { Token = token });
         }
 
-        private string GenerateJwtToken(string username)
+        private string GenerateJwtToken(User user)
         {
             var claims = new[]
             {
-            new Claim(ClaimTypes.Name, username)
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));

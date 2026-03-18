@@ -11,8 +11,8 @@ using TaskFlow.Api.Data;
 namespace TaskFlow.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260315085835_AddUserTable")]
-    partial class AddUserTable
+    [Migration("20260318185336_AddIsDeletedToTasks")]
+    partial class AddIsDeletedToTasks
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -35,11 +35,19 @@ namespace TaskFlow.Api.Migrations
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("Tasks");
                 });
@@ -61,6 +69,17 @@ namespace TaskFlow.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("TaskFlow.Api.Models.TaskItem", b =>
+                {
+                    b.HasOne("TaskFlow.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 #pragma warning restore 612, 618
         }
