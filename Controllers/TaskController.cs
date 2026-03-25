@@ -32,10 +32,9 @@ public class TasksController : ControllerBase
 
         var userId = GetUserId();
         var query =  _context.Tasks
-                          .Where(t => t.UserId == userId && !t.IsDeleted)
+                          .Where(t => t.UserId == userId)
                           .AsNoTracking();
-        var totalCount = await query.CountAsync();
-
+        
         if(isCompleted.HasValue)
         {
             query = query.Where(t => t.IsCompleted == isCompleted.Value);
@@ -47,15 +46,11 @@ public class TasksController : ControllerBase
                 t.Title.Contains(search) ||
                 t.Description.Contains(search));
         }
-
+        var totalCount = await query.CountAsync();
         var tasks = await query.Skip((pageNumber - 1) * pageSize)
                               .Take(pageSize)
                               .ToListAsync();
 
-        if (tasks.Count ==0)
-        {
-            return NotFound("No Item Found");
-        }
         return Ok
             (
               new
@@ -90,8 +85,7 @@ public class TasksController : ControllerBase
         {
             Title = dto.Title,
             Description = dto.Description,
-            IsCompleted = false,
-            UserId = GetUserId()
+            IsCompleted = false
         };
         await _context.Tasks.AddAsync(task);
         await _context.SaveChangesAsync();
