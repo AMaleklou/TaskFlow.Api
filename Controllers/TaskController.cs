@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.Xml;
+using Microsoft.AspNetCore.JsonPatch;
 
 namespace TaskFlow.Api.Controllers;
 
@@ -123,9 +124,40 @@ public class TasksController : ControllerBase
         return NoContent();
     }
 
+    [HttpPatch("{id}")]
+    public async Task<IActionResult> PatchTask(int id, [FromBody] JsonPatchDocument<UpdateTaskPatchDto> patchDoc)
+    {
+        if (patchDoc == null)
+            return BadRequest();
+        var userId = GetUserId();
+        var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        if (task == null)
+            return NotFound();
+
+        // تبدیل entity به DTO
+        var taskDto = new UpdateTaskPatchDto
+        {
+            Title = task.Title,
+            Description = task.Description,
+            IsCompleted = task.IsCompleted
+        };
+
+        // اعمال patch
+        patchDoc.ApplyTo(taskDto, ModelState);
+
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        // برگردوندن به entity
+        task.Title = taskDto.Title ?? task.Title;
+        task.Description = taskDto.Description ?? task.Description;
+        task.IsCompleted = taskDto.IsCompleted ?? task.IsCompleted;
+        await _context.SaveChangesAsync();
+        return Ok(task);
+    }
+
     private int GetUserId ()
     {
         return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
     }
-
 }
