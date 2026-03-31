@@ -5,9 +5,8 @@ using TaskFlow.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using System.Xml;
 using Microsoft.AspNetCore.JsonPatch;
+using TaskFlow.Api.Common;
 
 namespace TaskFlow.Api.Controllers;
 
@@ -52,16 +51,13 @@ public class TasksController : ControllerBase
                               .Take(pageSize)
                               .ToListAsync();
 
-        return Ok
-            (
-              new
-                {
-                  pageNumber,
-                  pageSize,
-                  totalCount,
-                  data = tasks
-                }
-            );
+        return Ok(ApiResponse.Success(new
+        {
+            pageNumber,
+            pageSize,
+            totalCount,
+            data = tasks
+        }));
     }
 
     [HttpGet("{id}")]
@@ -69,14 +65,13 @@ public class TasksController : ControllerBase
     {
         var userId = GetUserId();
         var task = await _context.Tasks
-                                 .Where(t => t.Id == id && t.UserId == userId && !t.IsDeleted)
+                                 .Where(t => t.Id == id && t.UserId == userId)
                                  .AsNoTracking()
                                  .FirstOrDefaultAsync();
-
         if (task == null)
-            return NotFound();
+            return NotFound(ApiResponse.Fail<string>("Task not found"));
 
-        return Ok(task);
+        return Ok(ApiResponse.Success(task));
     }
 
     [HttpPost]
@@ -88,9 +83,11 @@ public class TasksController : ControllerBase
             Description = dto.Description,
             IsCompleted = false
         };
-        await _context.Tasks.AddAsync(task);
+         _context.Tasks.Add(task);
         await _context.SaveChangesAsync();
-        return Ok(task);
+
+       // return Ok(ApiResponse.Success(task,"Created"));
+        return CreatedAtAction(nameof(GetById), new { id = task.Id }, ApiResponse.Success(task, "Created"));
     }
 
     [HttpPut("{id}")]
@@ -100,14 +97,14 @@ public class TasksController : ControllerBase
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId ==userId);
 
         if (task == null)
-            return NotFound();
+            return NotFound(ApiResponse.Fail<string>("Task not found"));
 
         task.Title = dto.Title;
         task.Description = dto.Description;
         task.IsCompleted = dto.IsCompleted;
         await _context.SaveChangesAsync();
 
-        return Ok(task);
+        return Ok(ApiResponse.Success(task,"Updated"));
     }
 
     [HttpDelete("{id}")]
@@ -117,11 +114,11 @@ public class TasksController : ControllerBase
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
 
         if (task == null)
-            return NotFound();
+            return NotFound(ApiResponse.Fail<string>("Task not found"));
         task.IsDeleted = true;
        await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(ApiResponse.Success<string>(null, "Task deleted"));
     }
 
     [HttpPatch("{id}")]
@@ -132,7 +129,7 @@ public class TasksController : ControllerBase
         var userId = GetUserId();
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
         if (task == null)
-            return NotFound();
+            return NotFound(ApiResponse.Fail<string>("Task not found"));
 
         // تبدیل entity به DTO
         var taskDto = new UpdateTaskPatchDto
@@ -146,14 +143,14 @@ public class TasksController : ControllerBase
         patchDoc.ApplyTo(taskDto, ModelState);
 
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+            return BadRequest(ApiResponse.Fail<object>("Invalid patch data"));
 
         // برگردوندن به entity
         task.Title = taskDto.Title ?? task.Title;
         task.Description = taskDto.Description ?? task.Description;
         task.IsCompleted = taskDto.IsCompleted ?? task.IsCompleted;
         await _context.SaveChangesAsync();
-        return Ok(task);
+        return Ok(ApiResponse.Success(task,"Updated"));
     }
 
     private int GetUserId ()
