@@ -7,6 +7,8 @@ using System.Text;
 using TaskFlow.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Models;
+using TaskFlow.Api.Common.Exceptions;
+using TaskFlow.Api.Common;
 
 namespace TaskFlow.Api.Controllers
 {
@@ -30,10 +32,10 @@ namespace TaskFlow.Api.Controllers
             var user =await _appDbContext.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-                return Unauthorized();
+                throw new BadRequestException("Invalid username or password");
 
             var token = GenerateJwtToken(user);
-            return Ok(new { Token = token });
+            return Ok(ApiResponse.Success(new { token }, "Login successful"));
         }
 
         private string GenerateJwtToken(User user)
@@ -63,10 +65,7 @@ namespace TaskFlow.Api.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             var existUser = await _appDbContext.Users.AnyAsync(u => u.Username == dto.Username);
-            if(existUser)
-            {
-                return BadRequest("This Username Already Existed !!!");
-            }
+            if (existUser) throw new BadRequestException("This Username Already Existed !!!");
 
             var user = new User
             {
@@ -75,10 +74,10 @@ namespace TaskFlow.Api.Controllers
 
             };
 
-           await _appDbContext.Users.AddAsync(user);
+            _appDbContext.Users.Add(user);
            await _appDbContext.SaveChangesAsync();
 
-            return Ok("User Created Successfully !");
+            return Ok(ApiResponse.Success<object>(null, "User created successfully"));
         }
     }
 }

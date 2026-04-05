@@ -22,7 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Middleware\" />
     <Folder Include="AI\" />
     <Folder Include="Repositories\" />
     <Folder Include="Services\" />

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.JsonPatch;
 using TaskFlow.Api.Common;
+using TaskFlow.Api.Common.Exceptions;
 
 namespace TaskFlow.Api.Controllers;
 
@@ -68,9 +69,7 @@ public class TasksController : ControllerBase
                                  .Where(t => t.Id == id && t.UserId == userId)
                                  .AsNoTracking()
                                  .FirstOrDefaultAsync();
-        if (task == null)
-            return NotFound(ApiResponse.Fail<string>("Task not found"));
-
+        if (task == null) throw new NotFoundException("Task not found");
         return Ok(ApiResponse.Success(task));
     }
 
@@ -96,8 +95,7 @@ public class TasksController : ControllerBase
         var userId = GetUserId();
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId ==userId);
 
-        if (task == null)
-            return NotFound(ApiResponse.Fail<string>("Task not found"));
+        if (task == null) throw new NotFoundException("Task not found");
 
         task.Title = dto.Title;
         task.Description = dto.Description;
@@ -113,23 +111,21 @@ public class TasksController : ControllerBase
         var userId = GetUserId();
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
 
-        if (task == null)
-            return NotFound(ApiResponse.Fail<string>("Task not found"));
+        if (task == null) throw new NotFoundException("Task not found");
+
         task.IsDeleted = true;
        await _context.SaveChangesAsync();
 
-        return Ok(ApiResponse.Success<string>(null, "Task deleted"));
+        return Ok(ApiResponse.Success<object>(null, "Task deleted"));
     }
 
     [HttpPatch("{id}")]
     public async Task<IActionResult> PatchTask(int id, [FromBody] JsonPatchDocument<UpdateTaskPatchDto> patchDoc)
     {
-        if (patchDoc == null)
-            return BadRequest();
+        if (patchDoc == null) throw new BadRequestException("Patch document is required");
         var userId = GetUserId();
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-        if (task == null)
-            return NotFound(ApiResponse.Fail<string>("Task not found"));
+        if (task == null) throw new NotFoundException("Task not found");
 
         // تبدیل entity به DTO
         var taskDto = new UpdateTaskPatchDto
@@ -143,7 +139,14 @@ public class TasksController : ControllerBase
         patchDoc.ApplyTo(taskDto, ModelState);
 
         if (!ModelState.IsValid)
-            return BadRequest(ApiResponse.Fail<object>("Invalid patch data"));
+        {
+            var errors = ModelState.Values
+                                   .SelectMany(v => v.Errors)
+                                   .Select(e => e.ErrorMessage)
+                                   .ToList();
+
+            throw new ValidationException(errors);
+        }
 
         // برگردوندن به entity
         task.Title = taskDto.Title ?? task.Title;

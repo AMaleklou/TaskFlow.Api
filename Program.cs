@@ -1,10 +1,14 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TaskFlow.Api.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
 using FluentValidation;
+using TaskFlow.Api.Middleware;
+using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Mvc;
+using TaskFlow.Api.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,9 +16,24 @@ var key = builder.Configuration["Jwt:Key"];
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
 
+
 // Add services to the container.
+
+//برای جلوگیری از رفتار پیش فرض سیستم و ایجاد ولیدیشن کاستوم
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.SuppressModelStateInvalidFilter = true;
+});
+
+//برای معرفی ولیدیشنی که خودمون تعریف کردیم
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationFilter>();
+});
+
 builder.Services.AddControllers();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers().AddNewtonsoftJson();
 builder.Services.AddEndpointsApiExplorer();
@@ -77,8 +96,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-app.MapControllers();
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
+
 app.Run();
