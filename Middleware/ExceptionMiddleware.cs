@@ -2,6 +2,7 @@
 using System.Text.Json;
 using TaskFlow.Api.Common;
 using TaskFlow.Api.Common.Exceptions;
+using Serilog;
 
 namespace TaskFlow.Api.Middleware
 {
@@ -22,6 +23,7 @@ namespace TaskFlow.Api.Middleware
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "Unhandled exception occurred");
                 await HandleExceptionAsync(context, ex);
             }
         }

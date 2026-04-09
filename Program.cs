@@ -9,6 +9,7 @@ using TaskFlow.Api.Middleware;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
 using TaskFlow.Api.Filters;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +31,15 @@ builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilter>();
 });
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
 
 builder.Services.AddControllers();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -96,7 +106,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+//MiddleWares
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<LoggingMiddleware>();
+
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
